@@ -66,12 +66,12 @@ addons_path = /usr/lib/python3/dist-packages/odoo/addons
 #-----------------------------------------------------------------------------
 # The log filename. If not set, use stdout.
 #-----------------------------------------------------------------------------
-logfile = /var/log/odoo/odoo-server.log
+;logfile = /var/log/odoo/odoo-server.log
 
 #-----------------------------------------------------------------------------
 # True/False. If True, create a daily log file and keep 30 files.
 #-----------------------------------------------------------------------------
-logrotate = True
+;logrotate = True
 
 #-----------------------------------------------------------------------------
 # Ture/False. If True, also write log to 'ir_logging' table in database
