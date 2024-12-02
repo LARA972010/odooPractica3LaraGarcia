@@ -1,0 +1,9 @@
+# generated from manifests external_dependencies
+schwifty==2024.4.0
+chardet
+cryptography==3.4.8
+pycountry
+pycryptodome
+unidecode
+xmlsig
+zeep
