@@ -3,10 +3,10 @@
         "1": {
             "Name": "postgres",
             "Group": "Servers",
-            "Port": 5432,
+            "Port": 35432,
             "Username": "odoo",
             "PassFile": "/pgadmin4/pgpass",
-            "Host": "database-host",
+            "Host": "postgres.canaveral-35.2damv",
             "SSLMode": "prefer",
             "MaintenanceDB": "postgres"
         }
