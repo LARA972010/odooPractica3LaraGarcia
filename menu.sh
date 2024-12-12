@@ -1,29 +1,56 @@
 #!/bin/bash
 
-# Verifica si el archivo de configuración (menu.txt) existe
-if [[ ! -f $1 ]]; then
-    echo "Error: No se encontró el archivo de configuración $1."
-    echo "Uso: ./menu.sh menu.txt"
-    exit 1
+###############################################################################
+# Menú interactivo con gestión avanzada de backups
+# Autor: Adaptación combinada
+###############################################################################
+
+set -a # Marca variables y funciones para exportar
+
+# VARIABLES GLOBALES
+SERVICES="odoo pgadmin4"
+RED_TEXT='\033[0;31m'
+GREEN_TEXT='\033[0;32m'
+RESET_TEXT='\033[0m' # Sin color
+VACKUP="./vackup"
+source .env 2> /dev/null
+
+if [ -z "${COMPOSE_PROJECT_NAME}" ]; then
+    PREFFIX="$( basename "$(pwd)" )"
+else
+    PREFFIX="${COMPOSE_PROJECT_NAME}"
 fi
+
+PREFFIX="$( echo "${PREFFIX}" | tr '[:upper:]' '[:lower:]' | tr -d '.' )"
+LATEST_BACKUP="backup_${PREFFIX}_latest_$(hostname).tgz"
+BACKUP_PATTERN="backup_${PREFFIX}_*.tgz"
+
+# Descargar y preparar herramienta vackup si no existe
+[ -f "$VACKUP" ] || curl -sSL https://raw.githubusercontent.com/BretFisher/docker-vackup/main/vackup -o "$VACKUP"
+[ -x "$VACKUP" ] || chmod +x "$VACKUP"
 
 # Funciones para las opciones del menú
 set_permissions() {
-    echo "Estableciendo permisos en los directorios odoo y pgadmin4..."
-    chmod -R 755 odoo pgadmin4
-    echo "Permisos establecidos."
+    echo "Estableciendo permisos..."
+    chmod o+rwx .
+    for i in $SERVICES; do
+        mkdir -p "$i"
+        find "$i" -type d -exec chmod 777 {} \;
+        find "$i" -type f -exec chmod 666 {} \;
+    done
+    echo -e "${GREEN_TEXT}Permisos establecidos correctamente.${RESET_TEXT}"
 }
 
 start_containers() {
     echo "Iniciando contenedores..."
     docker-compose up -d
-    echo "Contenedores iniciados."
+    echo -e "${GREEN_TEXT}Contenedores iniciados.${RESET_TEXT}"
 }
 
 stop_containers() {
     echo "Deteniendo contenedores..."
     docker-compose down
-    echo "Contenedores detenidos."
+    echo -e "${GREEN_TEXT}Contenedores detenidos.${RESET_TEXT}"
 }
 
 show_logs() {
@@ -32,27 +59,36 @@ show_logs() {
 }
 
 save_backup() {
-    echo "Creando backup con marca temporal..."
-    tar -czvf "backup_$(date +%Y%m%d%H%M%S).tar.gz" odoo pgadmin4
-    echo "Backup creado."
+    echo "Creando backup..."
+    local backup_file="backup_${PREFFIX}_$(date +%Y%m%d_%H%M%S)_$(hostname).tgz"
+    tar --exclude="$BACKUP_PATTERN" -czf "$backup_file" * .env
+    ln -sf "$backup_file" "$LATEST_BACKUP"
+    echo -e "${GREEN_TEXT}Backup creado: $backup_file${RESET_TEXT}"
 }
 
 restore_backup() {
-    echo "Restaurando el último backup..."
-    latest_backup=$(ls -t backup_*.tar.gz | head -n 1)
-    if [[ -z "$latest_backup" ]]; then
-        echo "No se encontró ningún backup."
+    echo "Restaurando backup..."
+    local latest_backup=$(ls -t $BACKUP_PATTERN 2>/dev/null | head -n 1)
+    if [ -z "$latest_backup" ]; then
+        echo -e "${RED_TEXT}No se encontró ningún backup para restaurar.${RESET_TEXT}"
     else
-        tar -xzvf "$latest_backup" -C .
-        echo "Backup restaurado: $latest_backup"
+        tar -xvzf "$latest_backup"
+        echo -e "${GREEN_TEXT}Backup restaurado: $latest_backup${RESET_TEXT}"
     fi
 }
 
 # Menú interactivo
 while true; do
     echo "Selecciona una opción:"
-    options=("Establecer permisos" "Iniciar contenedores" "Detener contenedores" \
-             "Ver logs" "Guardar backup" "Restaurar backup" "Salir")
+    options=(
+        "Establecer permisos"
+        "Iniciar contenedores"
+        "Detener contenedores"
+        "Ver logs"
+        "Guardar backup"
+        "Restaurar backup"
+        "Salir"
+    )
     select opt in "${options[@]}"; do
         case $REPLY in
             1) set_permissions; break ;;
@@ -65,4 +101,5 @@ while true; do
             *) echo "Opción inválida. Inténtalo de nuevo."; break ;;
         esac
     done
+    echo ""
 done
